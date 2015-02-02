@@ -90,7 +90,7 @@ var update = function(modifier){
 
 // Draw everything
 var render = function(){
-	if(bgReady){
+	if(bgReady){	console.log(bgImage);
 		ctx.drawImage(bgImage,0,0);
 	}
 	if(heroReady){
