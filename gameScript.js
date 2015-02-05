@@ -1,6 +1,3 @@
-var canvas = document.createElement("canvas");
-var ctx = canvas.getContext("2d");
-
 /* Code pertaining to all sprites in game */
 var SPRITEMODULE = (function(){
 
@@ -25,7 +22,7 @@ var SPRITEMODULE = (function(){
 		this.speed = speed;
 		this.damage = damage;
 	}
-	Goodguy.prototype = Object.create(Sprite.prototype, {spriteType:{value:'0'}});
+	Goodguy.prototype = Object.create(Sprite.prototype, {spriteType:{value:1}});
 	Goodguy.prototype.constructor = Goodguy;
 
 	/* Define Badguy class, set prototype to Sprite.prototype */
@@ -35,7 +32,7 @@ var SPRITEMODULE = (function(){
 		this.speed = speed;
 		this.damage = damage;
 	}
-	Badguy.prototype = Object.create(Sprite.prototype, {spriteType:{value:'1'}});
+	Badguy.prototype = Object.create(Sprite.prototype, {spriteType:{value:2}});
 	Badguy.prototype.constructor = Badguy;
 
 	/* Define Obstacle class, set prototype to Sprite.prototype */
@@ -44,7 +41,7 @@ var SPRITEMODULE = (function(){
 		this.model = model;
 		this.damage = damage;
 	}
-	Obstacle.prototype = Object.create(Sprite.prototype, {spriteType:{value:'2'}});
+	Obstacle.prototype = Object.create(Sprite.prototype, {spriteType:{value:3}});
 	Obstacle.prototype.constructor = Obstacle;
 
 	/* Define PowerUp class, set prototype to Sprite.prototype */
@@ -53,8 +50,16 @@ var SPRITEMODULE = (function(){
 		this.model = model;
 		this.ability = ability;
 	}
-	Powerup.prototype = Object.create(Sprite.prototype, {spriteType:{value:'3'}});
+	Powerup.prototype = Object.create(Sprite.prototype, {spriteType:{value:4}});
 	Powerup.prototype.constructor = Powerup;
+
+	/* Define Background class, set prototype to Sprite.prototype */
+	function Background(title,model){
+		this.title = title;
+		this.model = model;
+	}
+	Background.prototype = Object.create(Sprite.prototype, {spriteType:{value:0}});
+	Background.prototype.constructor = Background;
 
 	return {
 		/*
@@ -75,9 +80,11 @@ var SPRITEMODULE = (function(){
 		coffee : Object.create(Powerup.prototype, {title:{value:'Coffee'},model:{value:null},speed:{value:123},damage:{value:10}}),
 		hamSandwhich : Object.create(Powerup.prototype, {title:{value:'Ham Sandwhich'},model:{value:null},speed:{value:123},damage:{value:10}})
 		*/
-		billy : Object.create(Goodguy.prototype, {title:{value:'Billy'},model:{value:'images/billy.png'},speed:{value:256},damage:{value:10}}),
-		mcwalker : Object.create(Badguy.prototype, {title:{value:'McWalker'},model:{value:'images/mcwalker.png'},speed:{value:0},damage:{value:10}})
+		billy : Object.create(Goodguy.prototype, {title:{value:'Billy'},model:{value:'images/billy.png'},speed:{value:256},x:{value:0,writable:true},y:{value:320},damage:{value:10}}),
+		mcwalker : Object.create(Badguy.prototype, {title:{value:'McWalker'},model:{value:'images/mcwalker.png'},speed:{value:0},damage:{value:10}}),
 
+		/* background */
+		startingScreen : Object.create(Background.prototype, {title:{value:'starting screen'},model:{value:'images/landscape.png'}})
 	}	
 })();
 /* Code pertaining to all user interaction*/
@@ -94,64 +101,13 @@ var INTERACTIONMODULE = (function(){
 			addEventListener("keyup",function(e){
 				delete keysDown[e.keyCode];
 			},false);
+		},
+		getKeysDown : function(){
+			return keysDown;
 		}
 	}
 	
 })();
-/* Code for updating the game*/
-var UPDATEMODULE = (function(sprite,interaction){
-	
-	var update = function(modifier){
-		if(37 in interaction.downKey){
-			sprite.billy.x -= sprite.billy.speed * modifier;
-		}
-		if(39 in interaction.downKey){
-			sprite.billy.x += sprite.billy.speed * modifier;
-		}
-
-		// Are they touching?
-		if(
-			sprite.billy.x <= (sprite.mcwalker.x + 32)
-			&& sprite.mcwalker.x <= (sprite.billy.x + 32)
-			&& sprite.billy.y <= (sprite.mcwalker.y + 32)
-			&& sprite.mcwalker.y <= (sprite.billy.y + 32)
-			){
-			console.log('touching');
-			//reset();
-		}
-	};
-
-	var render = function(){
-		var img = new Image();
-		img.src = sprite.billy.model;
-		console.log(img);
-		ctx.drawImage(img,0,0);
-	}
-
-	// The main game loop
-	var main = function(){
-		var now = Date.now();
-		var delta = now - then;
-
-		update(delta / 1000);
-
-
-
-
-		render();
-
-		then = now;
-
-		// Request to do this again ASAP
-		requestAnimationFrame(main);
-	}
-
-	//Let's play the game!
-	var then = Date.now();
-	//reset();
-	main();
-
-})(SPRITEMODULE, INTERACTIONMODULE);
 /* Initialize the game */
 var INITMODULE = (function(sprite){
 	var initImages = {
@@ -159,17 +115,24 @@ var INITMODULE = (function(sprite){
 		hero : sprite.billy.model,
 		mcwalker : sprite.mcwalker.model
 	};
+	var canvas = document.createElement("canvas");
+	var ctx = canvas.getContext("2d");
+
 	return {
 		// Create the canvas
 		createCanvas : function(){
-			canvas = document.createElement("canvas");
-			ctx = canvas.getContext("2d");
 			canvas.width = 768;
 			canvas.height = 480;
 			document.body.appendChild(canvas);
 		},
+		getCanvas : function(){
+			return canvas;
+		},
+		getCtx : function(){
+			return ctx;
+		}
 		// load the images (background, image, etc.)
-		preloadImages : function(sources,callback){
+		/*preloadImages : function(sources,callback){
 			if(sources === false){
 				sources = initImages;
 			}
@@ -191,7 +154,6 @@ var INITMODULE = (function(sprite){
 	          images[src].src = sources[src];
 	        }
 		},
-
 		// Draw everything
 		render : function(images){
 			
@@ -205,18 +167,82 @@ var INITMODULE = (function(sprite){
 				}
 				
 			}
-			
-
-
-		}
+		}*/
 	
 	}
 })(SPRITEMODULE);
+/* Code for updating the game*/
+var UPDATEMODULE = (function(sprite,interaction,init){
+	
+	var update = function(modifier){
+		if(37 in interaction.getKeysDown()){
+			sprite.billy.x -= sprite.billy.speed * modifier;
+			console.log(sprite.billy['x']);
+		}
+		if(39 in interaction.getKeysDown()){
+			sprite.billy.x += sprite.billy.speed * modifier;
+		}
+
+		// Are they touching?
+		/*if(
+			sprite.billy.x <= (sprite.mcwalker.x + 32)
+			&& sprite.mcwalker.x <= (sprite.billy.x + 32)
+			&& sprite.billy.y <= (sprite.mcwalker.y + 32)
+			&& sprite.mcwalker.y <= (sprite.billy.y + 32)
+			){
+			console.log('touching');
+			//reset();
+		}*/
+	};
+
+	var render = function(){
+		var heroImg = new Image();
+		heroImg.src = sprite.billy.model;
+
+		var enemyImg = new Image();
+		enemyImg.src = sprite.mcwalker.model;
+
+
+		var bgImg = new Image();
+		bgImg.src = sprite.startingScreen.model;
+
+		init.getCtx().drawImage(bgImg,0,0);
+		init.getCtx().drawImage(heroImg,sprite.billy.x,sprite.billy.y);
+		init.getCtx().drawImage(enemyImg,710,320);
+		
+	};
+
+	// The main game loop
+	var main = function(){
+		var now = Date.now();
+		var delta = now - then;
+
+		update(delta / 1000);
 
 
 
-INITMODULE.createCanvas();	
-INITMODULE.preloadImages(false,INITMODULE.render);
+		render();
+
+		then = now;
+
+		// Request to do this again ASAP
+		requestAnimationFrame(main);
+	};
+
+	//Let's play the game!
+	var then = Date.now();
+	//reset();
+	main();
+
+})(SPRITEMODULE, INTERACTIONMODULE, INITMODULE);
+
+
+
+
+INITMODULE.createCanvas();
+INTERACTIONMODULE.downKey();
+INTERACTIONMODULE.upKey();	
+//INITMODULE.preloadImages(false,INITMODULE.render);
 
 
 
