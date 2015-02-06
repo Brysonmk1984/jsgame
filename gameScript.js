@@ -80,8 +80,8 @@ var SPRITEMODULE = (function(){
 		coffee : Object.create(Powerup.prototype, {title:{value:'Coffee'},model:{value:null},speed:{value:123},damage:{value:10}}),
 		hamSandwhich : Object.create(Powerup.prototype, {title:{value:'Ham Sandwhich'},model:{value:null},speed:{value:123},damage:{value:10}})
 		*/
-		billy : Object.create(Goodguy.prototype, {title:{value:'Billy'},model:{value:'images/billy.png'},speed:{value:256},x:{value:0,writable:true},y:{value:320},damage:{value:10}}),
-		mcwalker : Object.create(Badguy.prototype, {title:{value:'McWalker'},model:{value:'images/mcwalker.png'},speed:{value:0},damage:{value:10}}),
+		billy : Object.create(Goodguy.prototype, {title:{value:'Billy'},model:{value:'images/billy.png'},speed:{value:256},x:{value:0,writable:true},y:{value:320, writable:true},jump:{value:100, writable:true},damage:{value:10}}),
+		mcwalker : Object.create(Badguy.prototype, {title:{value:'McWalker'},model:{value:'images/mcwalker.png'},speed:{value:100},x:{value:710,writable:true},y:{value:320, writable:true},damage:{value:10}}),
 
 		/* background */
 		startingScreen : Object.create(Background.prototype, {title:{value:'starting screen'},model:{value:'images/landscape.png'}})
@@ -90,11 +90,19 @@ var SPRITEMODULE = (function(){
 /* Code pertaining to all user interaction*/
 var INTERACTIONMODULE = (function(){
 	var keysDown = {};
-
+	var heroState = {
+		airborn : false,
+		reachedApex : false,
+		standingElevation : 320
+	};
+	var levelState ={
+		groundLevel : 320
+	};
 	return{
 		downKey : function(){
 			addEventListener("keydown",function(e){
 				keysDown[e.keyCode] = true;
+				//console.log(keysDown);
 			},false);
 		},
 		upKey : function(){
@@ -104,17 +112,25 @@ var INTERACTIONMODULE = (function(){
 		},
 		getKeysDown : function(){
 			return keysDown;
+		},
+		getHeroState : function(){
+			return heroState;
+		},
+		setHeroState : function(prop, value){
+			heroState['prop'] = value;
+		},
+		getLevelState : function(){
+			return levelState;
+		},
+		setLevelState : function(prop, value){
+			levelState['prop'] = value;
 		}
 	}
 	
 })();
 /* Initialize the game */
 var INITMODULE = (function(sprite){
-	var initImages = {
-		background : "images/landscape.png",
-		hero : sprite.billy.model,
-		mcwalker : sprite.mcwalker.model
-	};
+
 	var canvas = document.createElement("canvas");
 	var ctx = canvas.getContext("2d");
 
@@ -131,7 +147,6 @@ var INITMODULE = (function(sprite){
 		getCtx : function(){
 			return ctx;
 		}
-		// load the images (background, image, etc.)
 		/*preloadImages : function(sources,callback){
 			if(sources === false){
 				sources = initImages;
@@ -154,20 +169,7 @@ var INITMODULE = (function(sprite){
 	          images[src].src = sources[src];
 	        }
 		},
-		// Draw everything
-		render : function(images){
-			
-			for(var img in images){
-				if(img === "hero"){
-					ctx.drawImage(images[img],0,320);
-				}else if(img === "mcwalker"){
-					ctx.drawImage(images[img],710,320);
-				}else{
-					ctx.drawImage(images[img],0,0);
-				}
-				
-			}
-		}*/
+		*/
 	
 	}
 })(SPRITEMODULE);
@@ -175,24 +177,68 @@ var INITMODULE = (function(sprite){
 var UPDATEMODULE = (function(sprite,interaction,init){
 	
 	var update = function(modifier){
+		//Gravity
+		if(interaction.getLevelState().groundLevel > sprite.billy.y){
+			sprite.billy.y += sprite.billy.speed * modifier * 1.0;
+			
+		}
+		
+
+		// move left
 		if(37 in interaction.getKeysDown()){
 			sprite.billy.x -= sprite.billy.speed * modifier;
-			console.log(sprite.billy['x']);
 		}
+		//move right
 		if(39 in interaction.getKeysDown()){
 			sprite.billy.x += sprite.billy.speed * modifier;
 		}
+		//jump
+		//if the space bar is held down 
+		if(32 in interaction.getKeysDown()){
+			//if the hero is not already in the air
+			if(interaction.getHeroState().reachedApex === false){
+				//Upward
+				sprite.billy.y -= sprite.billy.speed * modifier * 2.8;
+				interaction.getHeroState().airborn = true;
+			}
+			console.log(sprite.billy.y,interaction.getHeroState().standingElevation,sprite.billy.jump);
+			
+			
+		}
+		// Jump Apex
+		if(sprite.billy.y <= (interaction.getHeroState().standingElevation - sprite.billy.jump)){console.log('reached apex');
+			interaction.getHeroState().reachedApex = true;
+		}
 
-		// Are they touching?
-		/*if(
+		// Allow Jump
+		if(sprite.billy.y >= interaction.getLevelState().groundLevel){
+			interaction.getHeroState().reachedApex = false;
+		}
+
+
+		if(interaction.getHeroState().airborn === true && interaction.getHeroState().reachedApex === true){
+			//downward
+			//sprite.billy.y += sprite.billy.speed * modifier * 1.0;
+		}
+
+
+		// Are they touching if so, reset?
+		if(
 			sprite.billy.x <= (sprite.mcwalker.x + 32)
 			&& sprite.mcwalker.x <= (sprite.billy.x + 32)
 			&& sprite.billy.y <= (sprite.mcwalker.y + 32)
 			&& sprite.mcwalker.y <= (sprite.billy.y + 32)
 			){
-			console.log('touching');
-			//reset();
-		}*/
+			reset();
+		}
+	};
+	var enemiesOnScreen = [];
+
+	var updateEnemy = function(modifier,action){
+		sprite.mcwalker.x -= sprite.mcwalker.speed * modifier;
+		if(sprite.mcwalker.x <= 0){
+			sprite.mcwalker.x = 710;
+		}
 	};
 
 	var render = function(){
@@ -202,13 +248,12 @@ var UPDATEMODULE = (function(sprite,interaction,init){
 		var enemyImg = new Image();
 		enemyImg.src = sprite.mcwalker.model;
 
-
 		var bgImg = new Image();
 		bgImg.src = sprite.startingScreen.model;
 
 		init.getCtx().drawImage(bgImg,0,0);
 		init.getCtx().drawImage(heroImg,sprite.billy.x,sprite.billy.y);
-		init.getCtx().drawImage(enemyImg,710,320);
+		init.getCtx().drawImage(enemyImg,sprite.mcwalker.x,sprite.mcwalker.y);
 		
 	};
 
@@ -216,22 +261,24 @@ var UPDATEMODULE = (function(sprite,interaction,init){
 	var main = function(){
 		var now = Date.now();
 		var delta = now - then;
-
 		update(delta / 1000);
-
-
-
+		updateEnemy(delta / 1000);
 		render();
-
 		then = now;
 
 		// Request to do this again ASAP
 		requestAnimationFrame(main);
 	};
+	var reset = function(){
+		sprite.billy.x = 0;
+		sprite.billy.y = 320;
+	};
 
 	//Let's play the game!
 	var then = Date.now();
 	//reset();
+	interaction.downKey();
+	interaction.upKey();	
 	main();
 
 })(SPRITEMODULE, INTERACTIONMODULE, INITMODULE);
@@ -240,11 +287,3 @@ var UPDATEMODULE = (function(sprite,interaction,init){
 
 
 INITMODULE.createCanvas();
-INTERACTIONMODULE.downKey();
-INTERACTIONMODULE.upKey();	
-//INITMODULE.preloadImages(false,INITMODULE.render);
-
-
-
-
-//SPRITEMODULE.billy.readyFunction();
