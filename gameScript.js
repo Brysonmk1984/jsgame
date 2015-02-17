@@ -93,7 +93,8 @@ var INTERACTIONMODULE = (function(){
 	var heroState = {
 		airborn : false,
 		reachedApex : false,
-		standingElevation : 320
+		standingElevation : 320,
+		attacking : false
 	};
 	var levelState ={
 		groundLevel : 320
@@ -102,13 +103,24 @@ var INTERACTIONMODULE = (function(){
 		downKey : function(){
 			addEventListener("keydown",function(e){
 				keysDown[e.keyCode] = true;
-				//console.log(keysDown);
+				console.log(keysDown);
 			},false);
 		},
 		upKey : function(){
 			addEventListener("keyup",function(e){
+				// If attack button is released, reset attacking boolean
+				if(e.keyCode === 16){
+					
+					heroState.attacking = false;
+					
+					
+				}
 				delete keysDown[e.keyCode];
 			},false);
+
+		},
+		removeKey : function(key){
+			delete keysDown[key.keyCode];
 		},
 		getKeysDown : function(){
 			return keysDown;
@@ -192,6 +204,26 @@ var UPDATEMODULE = (function(sprite,interaction,init){
 		if(39 in interaction.getKeysDown()){
 			sprite.billy.x += sprite.billy.speed * modifier;
 		}
+
+
+
+		// Attack
+		if(16 in interaction.getKeysDown() && !interaction.getHeroState().attacking){
+
+			if(sprite.billy.x <= (sprite.mcwalker.x + 85)
+			&& sprite.mcwalker.x <= (sprite.billy.x + 85)
+			&& sprite.billy.y <= (sprite.mcwalker.y + 0)
+			&& sprite.mcwalker.y <= (sprite.billy.y + 0)){
+				console.log('hit');
+				stats.iterateKills();
+				sprite.mcwalker.x = 710;
+			}
+			//console.log(interaction.getKeysDown());
+			interaction.getHeroState().attacking = true;
+			
+		}
+		//console.log(interaction.getHeroState().attacking);
+
 		//jump
 		//if the space bar is held down 
 		if(32 in interaction.getKeysDown()){
@@ -202,8 +234,6 @@ var UPDATEMODULE = (function(sprite,interaction,init){
 				interaction.getHeroState().airborn = true;
 			}
 			console.log(sprite.billy.y,interaction.getHeroState().standingElevation,sprite.billy.jump);
-			
-			
 		}
 		// Jump Apex
 		if(sprite.billy.y <= (interaction.getHeroState().standingElevation - sprite.billy.jump)){console.log('reached apex');
@@ -229,10 +259,10 @@ var UPDATEMODULE = (function(sprite,interaction,init){
 			&& sprite.billy.y <= (sprite.mcwalker.y + 32)
 			&& sprite.mcwalker.y <= (sprite.billy.y + 32)
 			){
+			stats.iterateDeaths();
 			reset();
 		}
 	};
-	var enemiesOnScreen = [];
 
 	var updateEnemy = function(modifier,action){
 		sprite.mcwalker.x -= sprite.mcwalker.speed * modifier;
@@ -254,6 +284,13 @@ var UPDATEMODULE = (function(sprite,interaction,init){
 		init.getCtx().drawImage(bgImg,0,0);
 		init.getCtx().drawImage(heroImg,sprite.billy.x,sprite.billy.y);
 		init.getCtx().drawImage(enemyImg,sprite.mcwalker.x,sprite.mcwalker.y);
+
+		init.getCtx().fillStyle = "rgb(0, 0, 0)";
+		init.getCtx().font = "24px Helvetica";
+		init.getCtx().textAlign = "left";
+		init.getCtx().textBaseline = "top";
+		init.getCtx().fillText("Kills: " + stats.getKills(), 32, 32);
+		init.getCtx().fillText("Deaths: " + stats.getDeaths(), 32, 60);
 		
 	};
 
@@ -273,7 +310,27 @@ var UPDATEMODULE = (function(sprite,interaction,init){
 		sprite.billy.x = 0;
 		sprite.billy.y = 320;
 	};
-
+	var stats = (function(){
+		var kills = 0;
+		var deaths = 0;
+		return {
+			getKills : function(){
+				return kills;
+			},
+			iterateKills : function(){
+				kills += 1;
+				return kills;
+			},
+			getDeaths : function(){
+				return deaths;
+			},
+			iterateDeaths : function(){
+				deaths += 1;
+				return deaths;
+			}
+		};
+	})();
+	console.log(stats);
 	//Let's play the game!
 	var then = Date.now();
 	//reset();
